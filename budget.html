@@ -1,0 +1,1416 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0e1a">
+<meta name="format-detection" content="telephone=no">
+<title>Pilote Budget</title>
+<style>
+/* ============================================================
+   RESET & BASE
+   ============================================================ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:15px;line-height:1.45;
+  background:#0a0e1a;color:#e6ecf5;
+  padding-bottom:env(safe-area-inset-bottom);padding-top:env(safe-area-inset-top);
+  overscroll-behavior-y:none;
+}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+ul{list-style:none}
+a{color:inherit;text-decoration:none}
+
+/* ============================================================
+   PALETTE
+   fond:      #0a0e1a (dark navy)
+   surface1:  #131a2c
+   surface2:  #1c2440
+   border:    #2a3454
+   texte:     #e6ecf5
+   muted:     #8a93a8
+   bleu:      #3aa5ff  (electric blue)  -> Charges
+   menthe:    #2ee6a8  (mint green)     -> Epargne
+   corail:    #ff7a59  (coral orange)   -> Loisirs
+   violet:    #b48cff  (violet)         -> Reste à vivre
+   gris:      #2a3454  (gray for non-validated)
+   ============================================================ */
+:root{
+  --bg:#0a0e1a;--s1:#131a2c;--s2:#1c2440;--s3:#252e4e;--bdr:#2a3454;
+  --txt:#e6ecf5;--mut:#8a93a8;--dim:#5a627a;
+  --bleu:#3aa5ff;--menthe:#2ee6a8;--corail:#ff7a59;--violet:#b48cff;
+  --warn:#ffb84d;--danger:#ff5577;
+  --r:14px;
+}
+
+/* ============================================================
+   LAYOUT GLOBAL
+   ============================================================ */
+.app{
+  display:grid;
+  grid-template-columns:240px 1fr;
+  min-height:100vh;
+  padding-bottom:80px;
+}
+@media (max-width:768px){
+  .app{grid-template-columns:1fr}
+}
+
+/* Side nav (desktop) */
+.side-nav{
+  background:var(--s1);border-right:1px solid var(--bdr);
+  padding:24px 12px;position:sticky;top:0;height:100vh;
+  display:flex;flex-direction:column;gap:6px;
+}
+@media (max-width:768px){.side-nav{display:none}}
+.side-nav .brand{font-weight:700;font-size:18px;color:var(--txt);padding:8px 12px 24px;letter-spacing:.3px}
+.side-nav .nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 14px;border-radius:10px;color:var(--mut);
+  font-weight:500;font-size:14px;transition:.15s;
+}
+.side-nav .nav-item:hover{background:var(--s2);color:var(--txt)}
+.side-nav .nav-item.active{background:linear-gradient(90deg,rgba(58,165,255,.18),rgba(58,165,255,.04));color:var(--bleu)}
+.side-nav .nav-item .ico{font-size:18px;width:22px;text-align:center}
+.side-nav .settings{margin-top:auto;padding:8px 14px;color:var(--dim);font-size:13px}
+
+/* Top bar (mobile header) */
+.topbar{
+  display:none;position:sticky;top:0;z-index:30;
+  background:rgba(10,14,26,.92);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--bdr);
+  padding:10px 14px;align-items:center;gap:10px;
+}
+@media (max-width:768px){.topbar{display:flex}}
+.topbar .month-nav{display:flex;align-items:center;gap:6px;margin-left:auto}
+.topbar .month-nav button{width:32px;height:32px;border-radius:8px;background:var(--s2);color:var(--txt)}
+.topbar .month-nav .month-label{min-width:120px;text-align:center;font-weight:600}
+
+/* Bottom nav (mobile) */
+.bottom-nav{
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:30;
+  background:rgba(10,14,26,.95);backdrop-filter:blur(10px);
+  border-top:1px solid var(--bdr);
+  padding:6px 6px calc(6px + env(safe-area-inset-bottom));
+}
+@media (max-width:768px){.bottom-nav{display:flex;justify-content:space-around}}
+.bottom-nav .bn-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:8px 4px;color:var(--mut);font-size:11px;font-weight:500;
+}
+.bottom-nav .bn-item .ico{font-size:20px}
+.bottom-nav .bn-item.active{color:var(--bleu)}
+
+/* Main content */
+.main{padding:20px 28px;max-width:1100px;width:100%}
+@media (max-width:768px){.main{padding:14px;padding-bottom:90px}}
+
+.page-head{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.page-head h1{font-size:22px;font-weight:700;letter-spacing:.2px}
+.page-head .month-picker{display:flex;align-items:center;gap:8px;background:var(--s1);border:1px solid var(--bdr);border-radius:10px;padding:4px}
+.page-head .month-picker button{width:30px;height:30px;border-radius:7px;color:var(--txt);background:transparent}
+.page-head .month-picker button:hover{background:var(--s2)}
+.page-head .month-picker .m-label{padding:0 12px;font-weight:600;min-width:130px;text-align:center}
+.page-head .right{margin-left:auto;display:flex;gap:8px}
+
+/* ============================================================
+   FAB (Floating Action Button)
+   ============================================================ */
+.fab{
+  position:fixed;right:20px;bottom:96px;width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,var(--bleu),#5fbfff);color:#0a0e1a;
+  font-size:26px;font-weight:300;line-height:56px;text-align:center;
+  box-shadow:0 8px 24px rgba(58,165,255,.45);
+  z-index:25;transition:.15s;
+}
+@media (min-width:769px){.fab{bottom:30px}}
+.fab:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(58,165,255,.6)}
+.fab:active{transform:scale(.96)}
+
+/* ============================================================
+   CARDS / LISTS
+   ============================================================ */
+.card{
+  background:var(--s1);border:1px solid var(--bdr);border-radius:var(--r);
+  padding:16px;margin-bottom:14px;
+}
+.card.tight{padding:12px 14px}
+.card h3{font-size:14px;font-weight:600;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
+.suggestion-banner{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 16px;border-radius:12px;margin-bottom:14px;
+  background:linear-gradient(135deg,rgba(46,230,168,.12),rgba(58,165,255,.08));
+  border:1px solid rgba(46,230,168,.25);
+}
+.suggestion-banner.loisirs{
+  background:linear-gradient(135deg,rgba(255,122,89,.12),rgba(180,140,255,.08));
+  border:1px solid rgba(255,122,89,.25);
+}
+.suggestion-banner .lbl{font-size:13px;color:var(--mut)}
+.suggestion-banner .val{font-size:22px;font-weight:700;color:var(--menthe)}
+.suggestion-banner.loisirs .val{color:var(--corail)}
+
+.row{
+  display:flex;align-items:center;gap:10px;padding:12px 14px;
+  background:var(--s2);border:1px solid var(--bdr);border-radius:11px;margin-bottom:8px;
+}
+.row .grow{flex:1;min-width:0}
+.row .name{font-weight:600;font-size:15px;margin-bottom:2px}
+.row .meta{font-size:12px;color:var(--mut)}
+.row .amt{font-weight:700;font-size:15px;white-space:nowrap}
+.row .amt.validated{color:var(--menthe)}
+.row.validated{opacity:.85;background:linear-gradient(90deg,rgba(46,230,168,.08),var(--s2) 60%)}
+.row .actions{display:flex;gap:6px}
+.row .icon-btn{
+  width:32px;height:32px;border-radius:8px;background:transparent;color:var(--mut);
+  display:inline-flex;align-items:center;justify-content:center;font-size:15px;
+}
+.row .icon-btn:hover{background:var(--s3);color:var(--txt)}
+.row .icon-btn.danger:hover{color:var(--danger)}
+.row .check{
+  width:24px;height:24px;border-radius:7px;border:2px solid var(--bdr);
+  display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;
+  background:transparent;color:transparent;font-size:14px;transition:.15s;
+}
+.row .check.on{background:var(--menthe);border-color:var(--menthe);color:#0a0e1a}
+
+/* Inline input for amount to validate (épargne) */
+.row .amount-input{
+  background:var(--s1);border:1px solid var(--bdr);color:var(--txt);
+  padding:7px 9px;border-radius:8px;width:90px;text-align:right;font-weight:600;
+}
+.row .amount-input:focus{outline:none;border-color:var(--bleu)}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+@media (max-width:768px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.kpi{
+  background:var(--s1);border:1px solid var(--bdr);border-radius:12px;padding:14px;
+}
+.kpi .lbl{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.kpi .val{font-size:22px;font-weight:700}
+.kpi .val.big{font-size:26px}
+.kpi.charges .val{color:var(--bleu)}
+.kpi.epargne .val{color:var(--menthe)}
+.kpi.loisirs .val{color:var(--corail)}
+.kpi.reste .val{color:var(--violet)}
+.kpi.alert{border-color:rgba(255,184,77,.5);background:linear-gradient(135deg,rgba(255,184,77,.12),var(--s1))}
+.kpi.alert .val{color:var(--warn)}
+
+.chart-wrap{display:grid;grid-template-columns:300px 1fr;gap:24px;align-items:center}
+@media (max-width:600px){.chart-wrap{grid-template-columns:1fr}}
+.chart-wrap svg{display:block;margin:0 auto;cursor:pointer}
+.legend{display:flex;flex-direction:column;gap:10px}
+.legend .leg{display:flex;align-items:center;gap:10px;font-size:14px}
+.legend .sw{width:14px;height:14px;border-radius:4px;flex-shrink:0}
+.legend .leg .label{flex:1;color:var(--mut)}
+.legend .leg .value{font-weight:700;color:var(--txt)}
+.legend .leg.gray .sw{background:repeating-linear-gradient(45deg,var(--bdr) 0 4px,var(--s2) 4px 8px)}
+
+.detail-facture{display:flex;flex-direction:column;gap:6px;margin-top:14px}
+.detail-facture .line{
+  display:flex;justify-content:space-between;padding:8px 12px;
+  background:var(--s2);border-radius:8px;font-size:13px;
+}
+.detail-facture .line.sub{padding-left:24px;color:var(--mut);font-size:12px;background:transparent}
+.detail-facture .line.total{font-weight:700;background:var(--s3);margin-top:4px}
+
+/* ============================================================
+   MODAL
+   ============================================================ */
+.modal-back{
+  position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);
+  z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;
+  animation:fade .15s ease;
+}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal{
+  background:var(--s1);border:1px solid var(--bdr);border-radius:16px;
+  width:100%;max-width:440px;padding:22px;animation:slide .2s ease;
+}
+@keyframes slide{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal h2{font-size:18px;font-weight:700;margin-bottom:16px}
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12px;color:var(--mut);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+.field input,.field select{
+  width:100%;background:var(--s2);border:1px solid var(--bdr);color:var(--txt);
+  padding:10px 12px;border-radius:9px;font-size:15px;
+}
+.field input:focus,.field select:focus{outline:none;border-color:var(--bleu)}
+.field-row{display:flex;gap:10px}
+.field-row .field{flex:1}
+.checkbox-field{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--s2);border-radius:9px;cursor:pointer;margin-bottom:12px}
+.checkbox-field input{width:18px;height:18px;accent-color:var(--bleu)}
+.modal-actions{display:flex;gap:8px;margin-top:18px}
+.btn{
+  flex:1;padding:11px 14px;border-radius:10px;font-weight:600;font-size:14px;
+  background:var(--s2);color:var(--txt);border:1px solid var(--bdr);transition:.15s;
+}
+.btn:hover{background:var(--s3)}
+.btn.primary{background:var(--bleu);color:#0a0e1a;border-color:var(--bleu)}
+.btn.primary:hover{background:#5fbfff}
+.btn.danger{background:transparent;color:var(--danger);border-color:rgba(255,85,119,.3)}
+.btn.danger:hover{background:rgba(255,85,119,.1)}
+
+/* ============================================================
+   SUB-TABS (Epargne)
+   ============================================================ */
+.subtabs{display:flex;gap:4px;margin-bottom:14px;background:var(--s1);border:1px solid var(--bdr);border-radius:10px;padding:4px}
+.subtabs button{
+  flex:1;padding:8px 10px;border-radius:7px;color:var(--mut);font-weight:500;font-size:13px;
+}
+.subtabs button.active{background:var(--s2);color:var(--txt)}
+
+.empty{
+  text-align:center;padding:30px 20px;color:var(--mut);font-size:14px;
+  border:1px dashed var(--bdr);border-radius:12px;
+}
+
+.toast{
+  position:fixed;bottom:110px;left:50%;transform:translateX(-50%);
+  background:var(--s3);color:var(--txt);padding:10px 18px;border-radius:10px;
+  font-size:14px;z-index:60;box-shadow:0 6px 20px rgba(0,0,0,.4);
+  animation:pop .2s ease;
+}
+@keyframes pop{from{transform:translate(-50%,10px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+
+.badge{
+  display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600;
+  background:rgba(46,230,168,.2);color:var(--menthe);
+}
+.badge.gray{background:rgba(138,147,168,.15);color:var(--mut)}
+.badge.warn{background:rgba(255,184,77,.2);color:var(--warn)}
+
+.hidden-list{margin-top:20px}
+.hidden-list details{background:var(--s1);border:1px solid var(--bdr);border-radius:10px;padding:10px 14px}
+.hidden-list summary{cursor:pointer;font-weight:600;color:var(--mut);font-size:13px}
+.hidden-list summary:hover{color:var(--txt)}
+
+/* Settings */
+.settings-page .field{margin-bottom:14px}
+.hint{font-size:12px;color:var(--mut);margin-top:6px}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Side nav (desktop) -->
+  <nav class="side-nav">
+    <div class="brand">⚡ Pilote Budget</div>
+    <a class="nav-item" data-route="dashboard"><span class="ico">📊</span>Tableau de bord</a>
+    <a class="nav-item" data-route="ressources"><span class="ico">💼</span>Ressources</a>
+    <a class="nav-item" data-route="charges"><span class="ico">📑</span>Charges</a>
+    <a class="nav-item" data-route="epargne"><span class="ico">🐖</span>Épargne</a>
+    <a class="nav-item" data-route="loisirs"><span class="ico">🎭</span>Loisirs</a>
+    <a class="nav-item" data-route="reglages"><span class="ico">⚙️</span>Réglages</a>
+  </nav>
+
+  <!-- Top bar (mobile) -->
+  <div class="topbar" style="position:fixed;top:0;left:0;right:0">
+    <strong>⚡ Pilote Budget</strong>
+    <div class="month-nav">
+      <button id="mb-prev">‹</button>
+      <div class="month-label" id="mb-label"></div>
+      <button id="mb-next">›</button>
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <main class="main" id="main"></main>
+
+  <!-- FAB -->
+  <button class="fab" id="fab" title="Ajouter">+</button>
+
+  <!-- Bottom nav (mobile) -->
+  <nav class="bottom-nav">
+    <a class="bn-item" data-route="dashboard"><span class="ico">📊</span>Tableau</a>
+    <a class="bn-item" data-route="ressources"><span class="ico">💼</span>Ressources</a>
+    <a class="bn-item" data-route="charges"><span class="ico">📑</span>Charges</a>
+    <a class="bn-item" data-route="epargne"><span class="ico">🐖</span>Épargne</a>
+    <a class="bn-item" data-route="loisirs"><span class="ico">🎭</span>Loisirs</a>
+  </nav>
+</div>
+
+<!-- Modal mount -->
+<div id="modal-mount"></div>
+<!-- Toast mount -->
+<div id="toast-mount"></div>
+
+<script>
+/* ============================================================
+   UTILITAIRES
+   ============================================================ */
+const $ = (sel,root=document)=>root.querySelector(sel);
+const $$ = (sel,root=document)=>Array.from(root.querySelectorAll(sel));
+const uid = ()=> Math.random().toString(36).slice(2,10);
+const fmt = n => (Number(n)||0).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2})+' €';
+const fmtMonth = m => {
+  const [y,mo] = m.split('-');
+  return new Date(y,parseInt(mo)-1,1).toLocaleDateString('fr-FR',{month:'long',year:'numeric'});
+};
+const monthNow = ()=> {
+  const d=new Date();
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+};
+const addMonth = (m,delta) => {
+  const [y,mo]=m.split('-').map(Number);
+  const d=new Date(y,mo-1+delta,1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+};
+const escapeHtml = s => String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ============================================================
+   PERSISTENCE
+   ============================================================ */
+const STORAGE_KEY = 'budgetAppData';
+let data = null;
+
+function defaultData(){
+  const m = monthNow();
+  return {
+    version:1,
+    currentMonth:m,
+    settings:{loisirsThreshold:40, theme:'dark'},
+    months:{
+      [m]:{
+        resources:[],
+        charges:[],
+        epargne:[],     // subtype: 'matelas' | 'projet' | 'lissage'
+        loisirs:[],
+        loisirsCategories:[
+          {id:uid(), name:'Restaurant'},
+          {id:uid(), name:'Cinéma'},
+          {id:uid(), name:'Spectacle'}
+        ],
+        epargneHidden:[] // projets atteints masqués
+      }
+    }
+  };
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw){data = defaultData(); save(); return;}
+    data = JSON.parse(raw);
+    // migrations / sanity
+    if(!data.settings) data.settings = {loisirsThreshold:40};
+    if(data.settings.loisirsThreshold == null) data.settings.loisirsThreshold = 40;
+    if(!data.months) data.months = {};
+    if(!data.currentMonth) data.currentMonth = monthNow();
+    // ensure current month exists
+    ensureMonth(data.currentMonth);
+  }catch(e){
+    console.warn('load error, resetting', e);
+    data = defaultData(); save();
+  }
+}
+function save(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+  catch(e){ toast('Erreur sauvegarde'); console.error(e); }
+}
+
+/* Ensure the given monthStr exists, copying structure from previous month if needed */
+function ensureMonth(monthStr){
+  if(data.months[monthStr]) return data.months[monthStr];
+  // find latest month < monthStr
+  const keys = Object.keys(data.months).filter(k=>k<monthStr).sort();
+  const sourceKey = keys.length ? keys[keys.length-1] : null;
+  const base = {
+    resources:[], charges:[], epargne:[], loisirs:[], loisirsCategories:[],
+    epargneHidden:[]
+  };
+  if(sourceKey){
+    const s = data.months[sourceKey];
+    base.resources = s.resources.map(r=>({...r, validated:false}));
+    base.charges = s.charges.map(c=>({...c, validated:false}));
+    // epargne: copy structure but reset validated and per-month amount
+    base.epargne = s.epargne.map(e=>{
+      const copy = {...e, validated:false};
+      copy.amount = 0;
+      if(e.subtype==='lissage'){
+        copy.monthlyDone = 0; // progress within cycle
+        copy.cycleMonthIndex = 0; // position dans le cycle (0..n-1)
+      }
+      return copy;
+    });
+    base.loisirsCategories = s.loisirsCategories.map(c=>({...c}));
+    base.epargneHidden = (s.epargneHidden||[]).slice();
+  } else {
+    base.loisirsCategories = [
+      {id:uid(),name:'Restaurant'},{id:uid(),name:'Cinéma'},{id:uid(),name:'Spectacle'}
+    ];
+  }
+  data.months[monthStr] = base;
+  save();
+  return base;
+}
+function currentMonthData(){ return ensureMonth(data.currentMonth); }
+
+/* When a charge with lissage changes, update linked lissage entries */
+function syncLissageFromCharge(charge){
+  // find epargne entries linked to this charge in all months
+  for(const mk of Object.keys(data.months)){
+    const m = data.months[mk];
+    for(const e of m.epargne){
+      if(e.subtype==='lissage' && e.linkedChargeId === charge.id){
+        // amount is derived on the fly; nothing to store
+      }
+    }
+  }
+}
+
+/* Compute mensualite for a lissed charge */
+function mensualiteFor(charge){
+  if(charge.frequency==='trimestriel') return (Number(charge.amount)||0)/3;
+  if(charge.frequency==='annuel') return (Number(charge.amount)||0)/12;
+  return Number(charge.amount)||0;
+}
+
+/* ============================================================
+   CALCULS METIER
+   ============================================================ */
+function salaire(m){ return m.resources.filter(r=>r.type==='salaire' && r.validated).reduce((s,r)=>s+Number(r.amount||0),0); }
+function autresRessources(m){ return m.resources.filter(r=>r.type==='autre' && r.validated).reduce((s,r)=>s+Number(r.amount||0),0); }
+function chargesValidees(m){
+  // includes mensualised lissage (these are epargne subtype 'lissage' validated)
+  // plus non-lissed charges validated this month
+  const nonLisseValidated = m.charges.filter(c=>c.validated && !c.lissage).reduce((s,c)=>s+Number(c.amount||0),0);
+  const lissageValidated = m.epargne.filter(e=>e.subtype==='lissage' && e.validated).reduce((s,e)=>s+Number(e.amount||0),0);
+  return {nonLisse:nonLisseValidated, lissage:lissageValidated, total:nonLisseValidated+lissageValidated};
+}
+function epargneValidee(m){
+  // All epargne subtypes except lissage (which is counted as a charge)
+  return m.epargne.filter(e=>e.validated && e.subtype!=='lissage').reduce((s,e)=>s+Number(e.amount||0),0);
+}
+function loisirsValides(m){
+  return m.loisirs.filter(l=>l.validated).reduce((s,l)=>s+Number(l.amount||0),0);
+}
+function resteAVivre(m){
+  return salaire(m) + autresRessources(m) - chargesValidees(m).total - epargneValidee(m) - loisirsValides(m);
+}
+function suggestionEpargne(m){ return salaire(m) * 0.20; }
+function suggestionLoisirs(m){ return salaire(m) * 0.30; }
+
+/* ============================================================
+   ROUTING
+   ============================================================ */
+let currentRoute = 'dashboard';
+function setRoute(r){
+  currentRoute = r;
+  $$('.side-nav .nav-item, .bottom-nav .bn-item').forEach(el=>{
+    el.classList.toggle('active', el.dataset.route===r);
+  });
+  render();
+}
+function bindNav(){
+  $$('[data-route]').forEach(el=>{
+    el.addEventListener('click', e=>{ e.preventDefault(); setRoute(el.dataset.route); });
+  });
+  $('#mb-prev').addEventListener('click',()=>{ data.currentMonth = addMonth(data.currentMonth,-1); ensureMonth(data.currentMonth); save(); render(); });
+  $('#mb-next').addEventListener('click',()=>{ data.currentMonth = addMonth(data.currentMonth,1); ensureMonth(data.currentMonth); save(); render(); });
+}
+
+/* ============================================================
+   RENDER
+   ============================================================ */
+function render(){
+  const m = currentMonthData();
+  $('#mb-label').textContent = fmtMonth(data.currentMonth);
+  const main = $('#main');
+  let html = '';
+  if(currentRoute==='dashboard') html = renderDashboard(m);
+  else if(currentRoute==='ressources') html = renderRessources(m);
+  else if(currentRoute==='charges') html = renderCharges(m);
+  else if(currentRoute==='epargne') html = renderEpargne(m);
+  else if(currentRoute==='loisirs') html = renderLoisirs(m);
+  else if(currentRoute==='reglages') html = renderReglages();
+  main.innerHTML = html;
+  // bind for current view
+  bindCurrentView();
+  updateFab();
+  window.scrollTo({top:0,behavior:'instant'});
+}
+
+function updateFab(){
+  const fab = $('#fab');
+  const map = {dashboard:null,ressources:'Ressource',charges:'Charge',epargne:'Projet épargne',loisirs:'Catégorie loisirs',reglages:null};
+  const label = map[currentRoute];
+  if(label){ fab.style.display='block'; fab.dataset.action = currentRoute; fab.textContent='+'; fab.title='Ajouter '+label; }
+  else { fab.style.display='none'; }
+  fab.onclick = ()=>{
+    if(currentRoute==='ressources') openResourceModal();
+    else if(currentRoute==='charges') openChargeModal();
+    else if(currentRoute==='epargne') openEpargneModal();
+    else if(currentRoute==='loisirs') openLoisirCatModal();
+  };
+}
+
+function pageHead(title){
+  return `
+    <div class="page-head">
+      <h1>${title}</h1>
+      <div class="month-picker">
+        <button onclick="window.__navMonth(-1)">‹</button>
+        <div class="m-label">${fmtMonth(data.currentMonth)}</div>
+        <button onclick="window.__navMonth(1)">›</button>
+      </div>
+    </div>`;
+}
+window.__navMonth = delta => {
+  data.currentMonth = addMonth(data.currentMonth,delta);
+  ensureMonth(data.currentMonth); save(); render();
+};
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function renderDashboard(m){
+  const sal = salaire(m);
+  const aut = autresRessources(m);
+  const ch = chargesValidees(m);
+  const ep = epargneValidee(m);
+  const lo = loisirsValides(m);
+  const reste = sal+aut-ch.total-ep-lo;
+  const totalDispo = sal+aut;
+  const sugEp = suggestionEpargne(m);
+  const sugLo = suggestionLoisirs(m);
+  const budgetLoisirsRestant = Math.max(0,sugLo - lo);
+  const loisirsLow = budgetLoisirsRestant < (data.settings.loisirsThreshold||40) && sal>0;
+  // charges détaillées
+  const detail = buildDetail(m);
+  return `
+    ${pageHead('Tableau de bord')}
+    <div class="kpi-grid">
+      <div class="kpi reste"><div class="lbl">Reste à vivre</div><div class="val big">${fmt(reste)}</div></div>
+      <div class="kpi charges"><div class="lbl">Charges validées</div><div class="val">${fmt(ch.total)}</div></div>
+      <div class="kpi epargne"><div class="lbl">Épargne validée</div><div class="val">${fmt(ep)}</div></div>
+      <div class="kpi loisirs ${loisirsLow?'alert':''}"><div class="lbl">Loisirs validés</div><div class="val">${fmt(lo)}</div></div>
+    </div>
+    ${loisirsLow ? `<div class="card" style="border-color:rgba(255,184,77,.4);background:linear-gradient(135deg,rgba(255,184,77,.12),var(--s1));margin-bottom:14px">
+      <strong style="color:var(--warn)">⚠️ Budget loisirs restant faible : ${fmt(budgetLoisirsRestant)}</strong>
+      <div style="font-size:13px;color:var(--mut);margin-top:4px">Seuil d'alerte : ${fmt(data.settings.loisirsThreshold||40)}</div>
+    </div>` : ''}
+    <div class="card">
+      <h3>Répartition du mois</h3>
+      <div class="chart-wrap">
+        ${renderPieSVG(m)}
+        <div class="legend">${renderLegend(m)}</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Détail (cliquez sur le camembert)</h3>
+      <div class="detail-facture" id="detail-facture">${detail.summary}</div>
+    </div>
+  `;
+}
+
+function renderPieSVG(m){
+  const sal = salaire(m);
+  const aut = autresRessources(m);
+  const total = sal+aut;
+  const ch = chargesValidees(m).total;
+  const ep = epargneValidee(m);
+  const lo = loisirsValides(m);
+  const sugEp = suggestionEpargne(m);
+  const sugLo = suggestionLoisirs(m);
+  const reste = total - ch - ep - lo;
+
+  const cx=150,cy=150,r=110, r2=70; // inner radius for donut
+  const slices = [];
+  // Each slice: subtype, validated amount, gray amount (= objectif restant), color
+  // Total visual = total (or, if total=0, fallback to charges validated)
+  const baseTotal = total>0 ? total : Math.max(ch+ep+lo,1);
+  function addSlice(name, val, gray, color){
+    const p = val / baseTotal;
+    const g = gray / baseTotal;
+    if(p+g <= 0) return;
+    slices.push({name, val, gray, color, p, g});
+  }
+  addSlice('Charges', ch, 0, getCSS('--bleu'));
+  addSlice('Épargne', ep, Math.max(0, sugEp - ep), getCSS('--menthe'));
+  addSlice('Loisirs', lo, Math.max(0, sugLo - lo), getCSS('--corail'));
+  addSlice('Reste à vivre', Math.max(0,reste), 0, getCSS('--violet'));
+
+  if(total<=0 && ch+ep+lo===0){
+    // empty state
+    return `<svg viewBox="0 0 300 300" width="280" height="280" id="pie-svg">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${getCSS('--bdr')}" stroke-width="2" stroke-dasharray="6 6"/>
+      <text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="middle" fill="${getCSS('--mut')}" font-size="14">Aucune donnée</text>
+      <text x="${cx}" y="${cy+20}" text-anchor="middle" dominant-baseline="middle" fill="${getCSS('--dim')}" font-size="11">Validez une ressource</text>
+    </svg>`;
+  }
+
+  // build arcs
+  let angle = -Math.PI/2; // start at top
+  let paths = '';
+  for(const s of slices){
+    if(s.p>0){
+      const a2 = angle + s.p*Math.PI*2;
+      paths += arcPath(cx,cy,r,r2,angle,a2,s.color);
+      angle = a2;
+    }
+    if(s.g>0){
+      const a2 = angle + s.g*Math.PI*2;
+      paths += arcPath(cx,cy,r,r2,angle,a2,'url(#grayPattern)');
+      angle = a2;
+    }
+  }
+  // total text
+  const centerText = total>0 ? fmt(total) : fmt(ch+ep+lo);
+  const subText = total>0 ? 'disponible' : 'dépensé';
+  return `<svg viewBox="0 0 300 300" width="280" height="280" id="pie-svg">
+    <defs>
+      <pattern id="grayPattern" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+        <rect width="8" height="8" fill="${getCSS('--bdr')}"/>
+        <rect width="4" height="8" fill="${getCSS('--s2')}"/>
+      </pattern>
+    </defs>
+    ${paths}
+    <circle cx="${cx}" cy="${cy}" r="${r2-2}" fill="${getCSS('--bg')}"/>
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" fill="${getCSS('--txt')}" font-size="20" font-weight="700">${centerText}</text>
+    <text x="${cx}" y="${cy+16}" text-anchor="middle" fill="${getCSS('--mut')}" font-size="11">${subText}</text>
+  </svg>`;
+}
+
+function getCSS(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function arcPath(cx,cy,r,r2,a1,a2,fill){
+  const large = (a2-a1) > Math.PI ? 1 : 0;
+  const x1 = cx + r*Math.cos(a1), y1 = cy + r*Math.sin(a1);
+  const x2 = cx + r*Math.cos(a2), y2 = cy + r*Math.sin(a2);
+  const x3 = cx + r2*Math.cos(a2), y3 = cy + r2*Math.sin(a2);
+  const x4 = cx + r2*Math.cos(a1), y4 = cy + r2*Math.sin(a1);
+  return `<path d="M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${r2} ${r2} 0 ${large} 0 ${x4} ${y4} Z" fill="${fill}"/>`;
+}
+
+function renderLegend(m){
+  const sal = salaire(m);
+  const aut = autresRessources(m);
+  const total = sal+aut;
+  const ch = chargesValidees(m).total;
+  const ep = epargneValidee(m);
+  const lo = loisirsValides(m);
+  const sugEp = suggestionEpargne(m);
+  const sugLo = suggestionLoisirs(m);
+  const reste = total - ch - ep - lo;
+  const baseTotal = total>0 ? total : Math.max(ch+ep+lo,1);
+  return `
+    <div class="leg"><div class="sw" style="background:var(--bleu)"></div><div class="label">Charges</div><div class="value">${fmt(ch)}</div></div>
+    <div class="leg"><div class="sw" style="background:var(--menthe)"></div><div class="label">Épargne (validée)</div><div class="value">${fmt(ep)}</div></div>
+    <div class="leg gray"><div class="sw"></div><div class="label">Épargne restante (20%)</div><div class="value">${fmt(Math.max(0,sugEp-ep))}</div></div>
+    <div class="leg"><div class="sw" style="background:var(--corail)"></div><div class="label">Loisirs (validés)</div><div class="value">${fmt(lo)}</div></div>
+    <div class="leg gray"><div class="sw"></div><div class="label">Loisirs restants (30%)</div><div class="value">${fmt(Math.max(0,sugLo-lo))}</div></div>
+    <div class="leg"><div class="sw" style="background:var(--violet)"></div><div class="label">Reste à vivre</div><div class="value">${fmt(reste)}</div></div>
+  `;
+}
+
+function buildDetail(m){
+  const lines = [];
+  // resources
+  lines.push(`<div class="line" style="background:var(--s3)"><span>💼 Ressources</span><strong>${fmt(salaire(m)+autresRessources(m))}</strong></div>`);
+  for(const r of m.resources){
+    if(!r.validated) continue;
+    lines.push(`<div class="line sub"><span>${escapeHtml(r.name)} ${r.type==='salaire'?'<span class="badge">base 50/30/20</span>':''}</span><span>${fmt(r.amount)}</span></div>`);
+  }
+  // charges
+  lines.push(`<div class="line" style="background:var(--s3)"><span>📑 Charges validées</span><strong>${fmt(chargesValidees(m).total)}</strong></div>`);
+  for(const c of m.charges){
+    if(!c.validated || c.lissage) continue;
+    lines.push(`<div class="line sub"><span>${escapeHtml(c.name)} <span class="badge gray">${c.frequency}</span></span><span>${fmt(c.amount)}</span></div>`);
+  }
+  for(const e of m.epargne){
+    if(e.subtype!=='lissage' || !e.validated) continue;
+    lines.push(`<div class="line sub"><span>↪ ${escapeHtml(e.name)} <span class="badge gray">lissage</span></span><span>${fmt(e.amount)}</span></div>`);
+  }
+  // epargne
+  lines.push(`<div class="line" style="background:var(--s3)"><span>🐖 Épargne validée</span><strong>${fmt(epargneValidee(m))}</strong></div>`);
+  for(const e of m.epargne){
+    if(e.subtype==='lissage' || !e.validated) continue;
+    lines.push(`<div class="line sub"><span>${escapeHtml(e.name)} <span class="badge gray">${e.subtype}</span></span><span>${fmt(e.amount)}</span></div>`);
+  }
+  // loisirs
+  lines.push(`<div class="line" style="background:var(--s3)"><span>🎭 Loisirs validés</span><strong>${fmt(loisirsValides(m))}</strong></div>`);
+  for(const l of m.loisirs){
+    if(!l.validated) continue;
+    const cat = m.loisirsCategories.find(c=>c.id===l.categoryId);
+    lines.push(`<div class="line sub"><span>${escapeHtml(cat?cat.name:'?')} ${l.libelle?'— '+escapeHtml(l.libelle):''}</span><span>${fmt(l.amount)}</span></div>`);
+  }
+  lines.push(`<div class="line total"><span>Reste à vivre</span><span>${fmt(resteAVivre(m))}</span></div>`);
+  return {summary: lines.join('')};
+}
+
+/* ============================================================
+   RESSOURCES
+   ============================================================ */
+function renderRessources(m){
+  return `
+    ${pageHead('Ressources')}
+    <div class="card">
+      <h3>Salaire & autres rentrées</h3>
+      ${m.resources.length===0 ? '<div class="empty">Aucune ressource. Touchez + pour ajouter.</div>' : ''}
+      ${m.resources.map(r=>resourceRow(r,m)).join('')}
+    </div>
+    <div class="hint" style="color:var(--mut);font-size:13px;padding:0 6px">
+      💡 Seules les ressources marquées comme <strong>salaire</strong> servent à calculer les suggestions 50/30/20.
+      Les autres pensions s'ajoutent au disponible sans impacter la base.
+    </div>
+  `;
+}
+function resourceRow(r,m){
+  const isSal = r.type==='salaire';
+  return `
+    <div class="row ${r.validated?'validated':''}">
+      <div class="check ${r.validated?'on':''}" data-action="toggle-resource" data-id="${r.id}">${r.validated?'✓':''}</div>
+      <div class="grow">
+        <div class="name">${escapeHtml(r.name)} ${isSal?'<span class="badge">salaire</span>':'<span class="badge gray">autre</span>'}</div>
+        <div class="meta">${r.validated?'Inclus dans le mois':'À valider pour ce mois'}</div>
+      </div>
+      <div class="amt ${r.validated?'validated':''}">${fmt(r.amount)}</div>
+      <div class="actions">
+        <button class="icon-btn" data-action="edit-resource" data-id="${r.id}">✎</button>
+        <button class="icon-btn danger" data-action="del-resource" data-id="${r.id}">🗑</button>
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   CHARGES
+   ============================================================ */
+function renderCharges(m){
+  return `
+    ${pageHead('Charges')}
+    <div class="card">
+      <h3>Liste des charges</h3>
+      ${m.charges.length===0 ? '<div class="empty">Aucune charge. Touchez + pour ajouter.</div>' : ''}
+      ${m.charges.map(c=>chargeRow(c,m)).join('')}
+    </div>
+    <div class="hint" style="color:var(--mut);font-size:13px;padding:0 6px">
+      💡 Mensuelle : validez chaque mois. Trimestrielle/annuelle sans lissage : validez uniquement le mois du paiement.
+      Avec lissage : une mensualité automatique apparaît dans Épargne.
+    </div>
+  `;
+}
+function chargeRow(c,m){
+  const badge = c.frequency==='mensuel' ? '<span class="badge gray">mensuel</span>'
+              : c.frequency==='trimestriel' ? '<span class="badge gray">trimestriel</span>'
+              : '<span class="badge gray">annuel</span>';
+  const lissBadge = c.lissage ? '<span class="badge">lissage auto</span>' : '';
+  return `
+    <div class="row ${c.validated?'validated':''}">
+      <div class="check ${c.validated?'on':''}" data-action="toggle-charge" data-id="${c.id}">${c.validated?'✓':''}</div>
+      <div class="grow">
+        <div class="name">${escapeHtml(c.name)} ${badge} ${lissBadge}</div>
+        <div class="meta">${c.validated?'Validée ce mois':'À valider'}</div>
+      </div>
+      <div class="amt ${c.validated?'validated':''}">${fmt(c.amount)}</div>
+      <div class="actions">
+        <button class="icon-btn" data-action="edit-charge" data-id="${c.id}">✎</button>
+        <button class="icon-btn danger" data-action="del-charge" data-id="${c.id}">🗑</button>
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   EPARGNE
+   ============================================================ */
+function renderEpargne(m){
+  const sub = window.__epargneSub || 'projet';
+  const sugEp = suggestionEpargne(m);
+  const list = {
+    matelas: m.epargne.filter(e=>e.subtype==='matelas'),
+    projet: m.epargne.filter(e=>e.subtype==='projet'),
+    lissage: m.epargne.filter(e=>e.subtype==='lissage')
+  };
+  const hidden = (m.epargneHidden||[]).filter(e=>e.subtype==='projet');
+  return `
+    ${pageHead('Épargne')}
+    <div class="suggestion-banner">
+      <div>
+        <div class="lbl">Suggestion épargne (20% du salaire)</div>
+        <div style="font-size:12px;color:var(--mut);margin-top:2px">Basé uniquement sur le salaire validé</div>
+      </div>
+      <div class="val">${fmt(sugEp)}</div>
+    </div>
+    <div class="subtabs">
+      <button class="${sub==='projet'?'active':''}" data-ep-sub="projet">🎯 Projets</button>
+      <button class="${sub==='matelas'?'active':''}" data-ep-sub="matelas">🛡️ Matelas</button>
+      <button class="${sub==='lissage'?'active':''}" data-ep-sub="lissage">🔁 Charges lissées</button>
+    </div>
+    ${sub==='projet' ? renderEpargneProjets(m, list.projet) : ''}
+    ${sub==='matelas' ? renderEpargneMatelas(m, list.matelas) : ''}
+    ${sub==='lissage' ? renderEpargneLissage(m, list.lissage) : ''}
+    ${sub==='projet' && hidden.length ? `
+      <div class="hidden-list">
+        <details><summary>🏆 Projets atteints masqués (${hidden.length})</summary>
+          <div style="margin-top:10px">
+            ${hidden.map(e=>hiddenRow(e,m)).join('')}
+          </div>
+        </details>
+      </div>
+    ` : ''}
+  `;
+}
+function epargneRow(e, m){
+  const cycleInfo = e.subtype==='lissage' ? lissageCycleInfo(e,m) : null;
+  const reached = (e.subtype==='projet' && e.objectif && e.cumule_global >= e.objectif);
+  return `
+    <div class="row ${e.validated?'validated':''}">
+      <div class="check ${e.validated?'on':''}" data-action="toggle-epargne" data-id="${e.id}">${e.validated?'✓':''}</div>
+      <div class="grow">
+        <div class="name">${escapeHtml(e.name)} ${reached?'<span class="badge">atteint</span>':''} ${e.compte?`<span class="badge gray">${escapeHtml(e.compte)}</span>`:''}</div>
+        <div class="meta">
+          ${e.subtype==='matelas' ? `Matelas de sécurité · cumulé global : ${fmt(e.cumule_global||0)}` : ''}
+          ${e.subtype==='projet' ? `Projet · cumulé global : ${fmt(e.cumule_global||0)}${e.objectif?' / objectif '+fmt(e.objectif):''}` : ''}
+          ${e.subtype==='lissage' && cycleInfo ? `Lissage · mois ${cycleInfo.idx+1}/${cycleInfo.total} · ${fmt(cycleInfo.amount)}/mois` : ''}
+        </div>
+      </div>
+      ${e.subtype!=='matelas' ? `<input type="number" step="0.01" class="amount-input" placeholder="0,00" value="${e.amount||''}" data-action="set-epargne-amount" data-id="${e.id}">` : ''}
+      ${e.subtype==='matelas' ? `<div class="amt ${e.validated?'validated':''}">${fmt(e.cumule_global||0)}</div>` : ''}
+      <div class="actions">
+        ${e.subtype==='projet' ? `<button class="icon-btn" data-action="toggle-hide-projet" data-id="${e.id}" title="${e.hidden?'Restaurer':'Masquer'}">${e.hidden?'↩':'👁‍🗨'}</button>` : ''}
+        <button class="icon-btn" data-action="edit-epargne" data-id="${e.id}">✎</button>
+        <button class="icon-btn danger" data-action="del-epargne" data-id="${e.id}">🗑</button>
+      </div>
+    </div>`;
+}
+function hiddenRow(e,m){
+  return `
+    <div class="row" style="opacity:.8">
+      <div class="grow">
+        <div class="name">${escapeHtml(e.name)} <span class="badge">atteint</span></div>
+        <div class="meta">Cumulé : ${fmt(e.cumule_global||0)} ${e.compte?'· '+escapeHtml(e.compte):''}</div>
+      </div>
+      <div class="actions">
+        <button class="icon-btn" data-action="toggle-hide-projet" data-id="${e.id}" title="Restaurer">↩</button>
+        <button class="icon-btn danger" data-action="del-epargne-hidden" data-id="${e.id}">🗑</button>
+      </div>
+    </div>`;
+}
+function lissageCycleInfo(e,m){
+  const charge = m.charges.find(c=>c.id===e.linkedChargeId);
+  if(!charge) return null;
+  const total = charge.frequency==='trimestriel' ? 3 : charge.frequency==='annuel' ? 12 : 1;
+  const amount = mensualiteFor(charge);
+  const idx = e.cycleMonthIndex||0;
+  return {idx, total, amount};
+}
+function renderEpargneProjets(m,list){
+  if(list.length===0) return '<div class="empty">Aucun projet. Touchez + pour en créer un.</div>';
+  return list.map(e=>epargneRow(e,m)).join('');
+}
+function renderEpargneMatelas(m,list){
+  if(list.length===0) {
+    // auto-create one
+    if(!m.epargne.some(e=>e.subtype==='matelas')){
+      m.epargne.push({id:uid(), subtype:'matelas', name:'Matelas de sécurité', compte:'', cumule_global:0, historique:[], validated:false, amount:0});
+      save();
+    }
+    return m.epargne.filter(e=>e.subtype==='matelas').map(e=>epargneRow(e,m)).join('');
+  }
+  return list.map(e=>epargneRow(e,m)).join('');
+}
+function renderEpargneLissage(m,list){
+  if(list.length===0) return '<div class="empty">Aucune charge lissée. Activez le lissage sur une charge trimestrielle/annuelle.</div>';
+  return list.map(e=>epargneRow(e,m)).join('');
+}
+
+/* ============================================================
+   LOISIRS
+   ============================================================ */
+function renderLoisirs(m){
+  const sugLo = suggestionLoisirs(m);
+  const lo = loisirsValides(m);
+  const restant = Math.max(0, sugLo - lo);
+  const low = restant < (data.settings.loisirsThreshold||40) && salaire(m)>0;
+  return `
+    ${pageHead('Loisirs')}
+    <div class="suggestion-banner loisirs">
+      <div>
+        <div class="lbl">Suggestion loisirs (30% du salaire)</div>
+        <div style="font-size:12px;color:var(--mut);margin-top:2px">Validé : ${fmt(lo)} · restant : ${fmt(restant)}</div>
+      </div>
+      <div class="val">${fmt(sugLo)}</div>
+    </div>
+    ${low ? `<div class="card" style="border-color:rgba(255,184,77,.4);background:linear-gradient(135deg,rgba(255,184,77,.12),var(--s1));margin-bottom:14px">
+      <strong style="color:var(--warn)">⚠️ Budget loisirs faible : ${fmt(restant)} restant</strong>
+    </div>` : ''}
+    <div class="card">
+      <h3>Catégories</h3>
+      ${m.loisirsCategories.length===0?'<div class="empty">Aucune catégorie.</div>':''}
+      ${m.loisirsCategories.map(c=>loisirCatBlock(c,m)).join('')}
+    </div>
+  `;
+}
+function loisirCatBlock(c,m){
+  const items = m.loisirs.filter(l=>l.categoryId===c.id);
+  const total = items.filter(l=>l.validated).reduce((s,l)=>s+Number(l.amount||0),0);
+  return `
+    <div class="card tight" style="background:var(--s2);margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:${items.length?'10px':'0'}">
+        <strong style="flex:1">${escapeHtml(c.name)}</strong>
+        ${total>0?`<span class="badge">${fmt(total)}</span>`:''}
+        <button class="icon-btn" data-action="add-loisir" data-cat="${c.id}" title="Ajouter une dépense">+ Dépense</button>
+        <button class="icon-btn danger" data-action="del-loisir-cat" data-id="${c.id}" title="Supprimer la catégorie">🗑</button>
+      </div>
+      ${items.map(l=>loisirRow(l,m)).join('')}
+    </div>`;
+}
+function loisirRow(l,m){
+  return `
+    <div class="row ${l.validated?'validated':''}" style="margin-bottom:6px">
+      <div class="check ${l.validated?'on':''}" data-action="toggle-loisir" data-id="${l.id}">${l.validated?'✓':''}</div>
+      <div class="grow">
+        <div class="name">${l.libelle?escapeHtml(l.libelle):'Dépense'}</div>
+        <div class="meta">${l.validated?'Validée':'À valider'}</div>
+      </div>
+      <div class="amt ${l.validated?'validated':''}">${fmt(l.amount)}</div>
+      <div class="actions">
+        <button class="icon-btn danger" data-action="del-loisir" data-id="${l.id}">🗑</button>
+      </div>
+    </div>`;
+}
+
+/* ============================================================
+   REGLAGES
+   ============================================================ */
+function renderReglages(){
+  return `
+    ${pageHead('Réglages')}
+    <div class="card settings-page">
+      <h3>Alertes</h3>
+      <div class="field">
+        <label>Seuil d'alerte budget loisirs (€)</label>
+        <input type="number" id="set-threshold" step="0.01" value="${data.settings.loisirsThreshold||40}">
+        <div class="hint">Une alerte s'affiche quand le budget loisirs restant passe sous ce seuil.</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn primary" id="save-settings">Enregistrer</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Données</h3>
+      <div class="hint" style="margin-bottom:12px">Les données sont stockées localement dans votre navigateur (clé <code>budgetAppData</code>). Aucune synchronisation.</div>
+      <div class="modal-actions">
+        <button class="btn" id="export-data">📤 Exporter (JSON)</button>
+        <button class="btn" id="import-data">📥 Importer</button>
+        <input type="file" id="import-file" accept="application/json" style="display:none">
+        <button class="btn danger" id="reset-data">🗑 Tout effacer</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ============================================================
+   BIND CURRENT VIEW
+   ============================================================ */
+function bindCurrentView(){
+  const m = currentMonthData();
+  // Resources
+  $$('[data-action="toggle-resource"]').forEach(el=>el.addEventListener('click',()=>{
+    const r = m.resources.find(x=>x.id===el.dataset.id);
+    if(r){ r.validated = !r.validated; save(); render(); }
+  }));
+  $$('[data-action="edit-resource"]').forEach(el=>el.addEventListener('click',()=>{
+    const r = m.resources.find(x=>x.id===el.dataset.id);
+    if(r) openResourceModal(r);
+  }));
+  $$('[data-action="del-resource"]').forEach(el=>el.addEventListener('click',()=>{
+    if(!confirm('Supprimer cette ressource ?')) return;
+    m.resources = m.resources.filter(x=>x.id!==el.dataset.id);
+    save(); render();
+  }));
+  // Charges
+  $$('[data-action="toggle-charge"]').forEach(el=>el.addEventListener('click',()=>{
+    const c = m.charges.find(x=>x.id===el.dataset.id);
+    if(c){
+      c.validated = !c.validated;
+      save(); render();
+    }
+  }));
+  $$('[data-action="edit-charge"]').forEach(el=>el.addEventListener('click',()=>{
+    const c = m.charges.find(x=>x.id===el.dataset.id);
+    if(c) openChargeModal(c);
+  }));
+  $$('[data-action="del-charge"]').forEach(el=>el.addEventListener('click',()=>{
+    if(!confirm('Supprimer cette charge ?')) return;
+    const c = m.charges.find(x=>x.id===el.dataset.id);
+    if(c && c.lissage){
+      // remove linked lissage entries in this month
+      m.epargne = m.epargne.filter(e=>e.subtype==='lissage' && e.linkedChargeId !== c.id);
+    }
+    m.charges = m.charges.filter(x=>x.id!==el.dataset.id);
+    save(); render();
+  }));
+  // Epargne
+  $$('[data-action="toggle-epargne"]').forEach(el=>el.addEventListener('click',()=>{
+    const e = m.epargne.find(x=>x.id===el.dataset.id);
+    if(!e) return;
+    e.validated = !e.validated;
+    if(e.validated){
+      const amt = Number(e.amount||0);
+      // Add to cumule_global (for all non-lissage subtypes)
+      if(e.subtype!=='lissage'){
+        e.cumule_global = (Number(e.cumule_global)||0) + amt;
+        e.historique = e.historique||[];
+        e.historique.push({month:data.currentMonth, amount:amt, ts:Date.now()});
+      } else {
+        // lissage: increment month within cycle
+        const charge = m.charges.find(c=>c.id===e.linkedChargeId);
+        if(charge){
+          const total = charge.frequency==='trimestriel' ? 3 : charge.frequency==='annuel' ? 12 : 1;
+          e.monthlyDone = (e.monthlyDone||0) + 1;
+          e.cycleMonthIndex = ((e.cycleMonthIndex||0)+1) % total;
+          if(e.cycleMonthIndex===0) e.monthlyDone = 0; // cycle reset
+        }
+      }
+    } else {
+      // unvalidate: reverse cumule for non-lissage
+      if(e.subtype!=='lissage'){
+        const amt = Number(e.amount||0);
+        e.cumule_global = Math.max(0,(Number(e.cumule_global)||0)-amt);
+        e.historique = e.historique||[];
+        // remove last matching entry
+        for(let i=e.historique.length-1;i>=0;i--){
+          if(e.historique[i].month===data.currentMonth && Math.abs(e.historique[i].amount-amt)<0.001){
+            e.historique.splice(i,1); break;
+          }
+        }
+      } else {
+        const charge = m.charges.find(c=>c.id===e.linkedChargeId);
+        if(charge){
+          const total = charge.frequency==='trimestriel' ? 3 : charge.frequency==='annuel' ? 12 : 1;
+          e.cycleMonthIndex = ((e.cycleMonthIndex||0)-1+total)%total;
+          e.monthlyDone = Math.max(0,(e.monthlyDone||1)-1);
+        }
+      }
+    }
+    save(); render();
+  }));
+  $$('[data-action="set-epargne-amount"]').forEach(el=>el.addEventListener('input',()=>{
+    const e = m.epargne.find(x=>x.id===el.dataset.id);
+    if(e){ e.amount = parseFloat(el.value)||0; save(); /* no full rerender needed */ }
+  }));
+  $$('[data-action="set-epargne-amount"]').forEach(el=>el.addEventListener('blur',()=>{ render(); }));
+  $$('[data-action="edit-epargne"]').forEach(el=>el.addEventListener('click',()=>{
+    const e = m.epargne.find(x=>x.id===el.dataset.id);
+    if(e) openEpargneModal(e);
+  }));
+  $$('[data-action="del-epargne"]').forEach(el=>el.addEventListener('click',()=>{
+    if(!confirm('Supprimer cet élément d\'épargne ?')) return;
+    m.epargne = m.epargne.filter(x=>x.id!==el.dataset.id);
+    save(); render();
+  }));
+  $$('[data-action="del-epargne-hidden"]').forEach(el=>el.addEventListener('click',()=>{
+    if(!confirm('Supprimer définitivement ?')) return;
+    m.epargneHidden = (m.epargneHidden||[]).filter(x=>x.id!==el.dataset.id);
+    save(); render();
+  }));
+  $$('[data-action="toggle-hide-projet"]').forEach(el=>el.addEventListener('click',()=>{
+    const e = m.epargne.find(x=>x.id===el.dataset.id);
+    if(!e) return;
+    if(!e.hidden){
+      e.hidden = true;
+      m.epargneHidden = m.epargneHidden||[];
+      m.epargneHidden.push({...e});
+      m.epargne = m.epargne.filter(x=>x.id!==e.id);
+    } else {
+      e.hidden = false;
+      m.epargne.push(e);
+      m.epargneHidden = (m.epargneHidden||[]).filter(x=>x.id!==e.id);
+    }
+    save(); render();
+  }));
+  $$('[data-ep-sub]').forEach(el=>el.addEventListener('click',()=>{
+    window.__epargneSub = el.dataset.epSub; render();
+  }));
+  // Loisirs
+  $$('[data-action="add-loisir"]').forEach(el=>el.addEventListener('click',()=>{
+    openLoisirModal(null, el.dataset.cat);
+  }));
+  $$('[data-action="del-loisir-cat"]').forEach(el=>el.addEventListener('click',()=>{
+    if(!confirm('Supprimer cette catégorie et ses dépenses ?')) return;
+    const cid = el.dataset.id;
+    m.loisirs = m.loisirs.filter(l=>l.categoryId!==cid);
+    m.loisirsCategories = m.loisirsCategories.filter(c=>c.id!==cid);
+    save(); render();
+  }));
+  $$('[data-action="toggle-loisir"]').forEach(el=>el.addEventListener('click',()=>{
+    const l = m.loisirs.find(x=>x.id===el.dataset.id);
+    if(l){ l.validated = !l.validated; save(); render(); }
+  }));
+  $$('[data-action="del-loisir"]').forEach(el=>el.addEventListener('click',()=>{
+    if(!confirm('Supprimer cette dépense ?')) return;
+    m.loisirs = m.loisirs.filter(l=>l.id!==el.dataset.id);
+    save(); render();
+  }));
+  // Pie click -> show detail
+  const svg = $('#pie-svg');
+  if(svg){
+    svg.addEventListener('click',()=>{
+      const detail = $('#detail-facture');
+      if(detail){ detail.scrollIntoView({behavior:'smooth',block:'start'}); }
+    });
+  }
+  // Settings bindings
+  const saveBtn = $('#save-settings');
+  if(saveBtn) saveBtn.addEventListener('click',()=>{
+    const v = parseFloat($('#set-threshold').value);
+    data.settings.loisirsThreshold = (isNaN(v)||v<0) ? 40 : v;
+    save(); toast('Réglages enregistrés'); render();
+  });
+  const exp = $('#export-data');
+  if(exp) exp.addEventListener('click',()=>{
+    const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'budget-backup-'+Date.now()+'.json';
+    a.click(); URL.revokeObjectURL(url);
+  });
+  const imp = $('#import-data');
+  if(imp) imp.addEventListener('click',()=>$('#import-file').click());
+  const impFile = $('#import-file');
+  if(impFile) impFile.addEventListener('change',e=>{
+    const f = e.target.files[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = ()=>{
+      try{
+        const obj = JSON.parse(r.result);
+        if(!obj.months) throw new Error('invalid');
+        data = obj; save(); toast('Import réussi'); render();
+      }catch(err){ alert('Fichier invalide'); }
+    };
+    r.readAsText(f);
+  });
+  const rst = $('#reset-data');
+  if(rst) rst.addEventListener('click',()=>{
+    if(!confirm('Effacer toutes les données ? Cette action est irréversible.')) return;
+    localStorage.removeItem(STORAGE_KEY); data = defaultData(); save(); toast('Données effacées'); render();
+  });
+}
+
+/* ============================================================
+   MODALES
+   ============================================================ */
+function openModal(html){
+  closeModal();
+  const mount = $('#modal-mount');
+  mount.innerHTML = `<div class="modal-back" id="mback"><div class="modal">${html}</div></div>`;
+  $('#mback').addEventListener('click',e=>{ if(e.target.id==='mback') closeModal(); });
+}
+function closeModal(){ $('#modal-mount').innerHTML = ''; }
+
+function openResourceModal(existing){
+  const r = existing || {id:uid(), type:'salaire', name:'', amount:0, validated:false};
+  openModal(`
+    <h2>${existing?'Modifier':'Nouvelle'} ressource</h2>
+    <div class="field"><label>Nom</label><input id="f-name" value="${escapeHtml(r.name)}" placeholder="Salaire principal, Pension…"></div>
+    <div class="field-row">
+      <div class="field"><label>Montant (€)</label><input id="f-amount" type="number" step="0.01" value="${r.amount||0}"></div>
+      <div class="field"><label>Type</label>
+        <select id="f-type">
+          <option value="salaire" ${r.type==='salaire'?'selected':''}>Salaire (base 50/30/20)</option>
+          <option value="autre" ${r.type==='autre'?'selected':''}>Autre (pensions…)</option>
+        </select>
+      </div>
+    </div>
+    <div class="checkbox-field"><input type="checkbox" id="f-validated" ${r.validated?'checked':''}><label for="f-validated">Inclure ce mois-ci</label></div>
+    <div class="modal-actions">
+      <button class="btn" id="f-cancel">Annuler</button>
+      ${existing?'<button class="btn danger" id="f-del">Supprimer</button>':''}
+      <button class="btn primary" id="f-save">Enregistrer</button>
+    </div>
+  `);
+  $('#f-cancel').onclick = closeModal;
+  if($('#f-del')) $('#f-del').onclick = ()=>{
+    if(!confirm('Supprimer ?')) return;
+    const m = currentMonthData();
+    m.resources = m.resources.filter(x=>x.id!==r.id);
+    save(); closeModal(); render();
+  };
+  $('#f-save').onclick = ()=>{
+    const m = currentMonthData();
+    r.name = $('#f-name').value.trim() || 'Ressource';
+    r.amount = parseFloat($('#f-amount').value)||0;
+    r.type = $('#f-type').value;
+    r.validated = $('#f-validated').checked;
+    if(!existing){
+      m.resources.push(r);
+    }
+    save(); closeModal(); render();
+  };
+}
+
+function openChargeModal(existing){
+  const c = existing || {id:uid(), name:'', amount:0, frequency:'mensuel', lissage:false, validated:false};
+  openModal(`
+    <h2>${existing?'Modifier':'Nouvelle'} charge</h2>
+    <div class="field"><label>Nom</label><input id="f-name" value="${escapeHtml(c.name)}" placeholder="Loyer, EDF, Assurance…"></div>
+    <div class="field-row">
+      <div class="field"><label>Montant (€)</label><input id="f-amount" type="number" step="0.01" value="${c.amount||0}"></div>
+      <div class="field"><label>Fréquence</label>
+        <select id="f-freq">
+          <option value="mensuel" ${c.frequency==='mensuel'?'selected':''}>Mensuel</option>
+          <option value="trimestriel" ${c.frequency==='trimestriel'?'selected':''}>Trimestriel</option>
+          <option value="annuel" ${c.frequency==='annuel'?'selected':''}>Annuel</option>
+        </select>
+      </div>
+    </div>
+    ${c.frequency!=='mensuel' ? `
+    <div class="checkbox-field"><input type="checkbox" id="f-lissage" ${c.lissage?'checked':''}><label for="f-lissage">Lissage automatique (mensualise la charge)</label></div>
+    <div class="hint" style="color:var(--mut);font-size:12px;margin:-4px 0 12px 4px">Crée une ligne dans Épargne à valider chaque mois. Au bout de 3 ou 12 mois, le cycle redémarre.</div>
+    ` : ''}
+    <div class="checkbox-field"><input type="checkbox" id="f-validated" ${c.validated?'checked':''}><label for="f-validated">Validée ce mois-ci</label></div>
+    <div class="modal-actions">
+      <button class="btn" id="f-cancel">Annuler</button>
+      ${existing?'<button class="btn danger" id="f-del">Supprimer</button>':''}
+      <button class="btn primary" id="f-save">Enregistrer</button>
+    </div>
+  `);
+  $('#f-cancel').onclick = closeModal;
+  if($('#f-del')) $('#f-del').onclick = ()=>{
+    if(!confirm('Supprimer ?')) return;
+    const m = currentMonthData();
+    if(c.lissage) m.epargne = m.epargne.filter(e=>!(e.subtype==='lissage' && e.linkedChargeId===c.id));
+    m.charges = m.charges.filter(x=>x.id!==c.id);
+    save(); closeModal(); render();
+  };
+  $('#f-save').onclick = ()=>{
+    const m = currentMonthData();
+    const wasLissage = c.lissage;
+    c.name = $('#f-name').value.trim() || 'Charge';
+    c.amount = parseFloat($('#f-amount').value)||0;
+    c.frequency = $('#f-freq').value;
+    c.lissage = c.frequency==='mensuel' ? false : ($('#f-lissage')?$('#f-lissage').checked:false);
+    c.validated = $('#f-validated').checked;
+    if(!existing) m.charges.push(c);
+    // Gérer le lissage
+    if(c.lissage){
+      let lissage = m.epargne.find(e=>e.subtype==='lissage' && e.linkedChargeId===c.id);
+      if(!lissage){
+        lissage = {id:uid(), subtype:'lissage', name:c.name+' (lissé)', linkedChargeId:c.id, validated:false, amount:mensualiteFor(c), cumule_global:0, cycleMonthIndex:0, monthlyDone:0};
+        m.epargne.push(lissage);
+      } else {
+        lissage.name = c.name+' (lissé)';
+        lissage.amount = mensualiteFor(c);
+      }
+    } else if(wasLissage && !c.lissage){
+      // Remove lissage entries linked to this charge for current month only
+      m.epargne = m.epargne.filter(e=>!(e.subtype==='lissage' && e.linkedChargeId===c.id));
+    }
+    save(); closeModal(); render();
+  };
+}
+
+function openEpargneModal(existing){
+  const e = existing || {id:uid(), subtype:'projet', name:'', compte:'', cumule_global:0, objectif:0, validated:false, amount:0, historique:[]};
+  const title = e.subtype==='matelas'?'Matelas de sécurité':(existing?'Modifier épargne':'Nouveau projet');
+  openModal(`
+    <h2>${title}</h2>
+    <div class="field"><label>Nom</label><input id="f-name" value="${escapeHtml(e.name)}" placeholder="Vacances, Voiture…"></div>
+    <div class="field"><label>Compte bancaire (optionnel)</label><input id="f-compte" value="${escapeHtml(e.compte||'')}" placeholder="Livret A, Bourse…"></div>
+    ${e.subtype==='projet' ? `
+    <div class="field"><label>Objectif (€) — optionnel</label><input id="f-objectif" type="number" step="0.01" value="${e.objectif||0}"></div>
+    <div class="field"><label>Montant déjà cumulé (€)</label><input id="f-cumule" type="number" step="0.01" value="${e.cumule_global||0}"></div>
+    ` : ''}
+    ${e.subtype==='matelas' ? `
+    <div class="field"><label>Montant cumulé (€)</label><input id="f-cumule" type="number" step="0.01" value="${e.cumule_global||0}"></div>
+    ` : ''}
+    <div class="modal-actions">
+      <button class="btn" id="f-cancel">Annuler</button>
+      <button class="btn primary" id="f-save">Enregistrer</button>
+    </div>
+  `);
+  $('#f-cancel').onclick = closeModal;
+  $('#f-save').onclick = ()=>{
+    const m = currentMonthData();
+    e.name = $('#f-name').value.trim() || 'Épargne';
+    e.compte = $('#f-compte').value.trim();
+    if(e.subtype==='projet' || e.subtype==='matelas'){
+      const cum = $('#f-cumule') ? (parseFloat($('#f-cumule').value)||0) : (e.cumule_global||0);
+      e.cumule_global = Math.max(0,cum);
+    }
+    if(e.subtype==='projet'){
+      e.objectif = parseFloat($('#f-objectif').value)||0;
+    }
+    if(!existing) m.epargne.push(e);
+    save(); closeModal(); render();
+  };
+}
+
+function openLoisirCatModal(){
+  openModal(`
+    <h2>Nouvelle catégorie</h2>
+    <div class="field"><label>Nom</label><input id="f-name" placeholder="Restaurant, Cinéma, Voyage…"></div>
+    <div class="modal-actions">
+      <button class="btn" id="f-cancel">Annuler</button>
+      <button class="btn primary" id="f-save">Ajouter</button>
+    </div>
+  `);
+  $('#f-cancel').onclick = closeModal;
+  $('#f-save').onclick = ()=>{
+    const m = currentMonthData();
+    const name = $('#f-name').value.trim();
+    if(!name){ toast('Nom requis'); return; }
+    m.loisirsCategories.push({id:uid(), name});
+    save(); closeModal(); render();
+  };
+}
+
+function openLoisirModal(existing, catId){
+  const l = existing || {id:uid(), categoryId:catId, libelle:'', amount:0, validated:false};
+  const cats = currentMonthData().loisirsCategories;
+  openModal(`
+    <h2>${existing?'Modifier':'Nouvelle'} dépense</h2>
+    <div class="field"><label>Catégorie</label>
+      <select id="f-cat">${cats.map(c=>`<option value="${c.id}" ${c.id===l.categoryId?'selected':''}>${escapeHtml(c.name)}</option>`).join('')}</select>
+    </div>
+    <div class="field"><label>Libellé (optionnel)</label><input id="f-libelle" value="${escapeHtml(l.libelle||'')}" placeholder="Soirée resto, Séance ciné…"></div>
+    <div class="field"><label>Montant (€)</label><input id="f-amount" type="number" step="0.01" value="${l.amount||0}"></div>
+    <div class="checkbox-field"><input type="checkbox" id="f-validated" ${l.validated?'checked':''}><label for="f-validated">Validée (déduit du budget loisirs et du reste à vivre)</label></div>
+    <div class="modal-actions">
+      <button class="btn" id="f-cancel">Annuler</button>
+      <button class="btn primary" id="f-save">Enregistrer</button>
+    </div>
+  `);
+  $('#f-cancel').onclick = closeModal;
+  $('#f-save').onclick = ()=>{
+    const m = currentMonthData();
+    l.categoryId = $('#f-cat').value;
+    l.libelle = $('#f-libelle').value.trim();
+    l.amount = parseFloat($('#f-amount').value)||0;
+    l.validated = $('#f-validated').checked;
+    if(!existing) m.loisirs.push(l);
+    save(); closeModal(); render();
+  };
+}
+
+/* ============================================================
+   TOAST
+   ============================================================ */
+function toast(msg){
+  const mount = $('#toast-mount');
+  mount.innerHTML = `<div class="toast">${escapeHtml(msg)}</div>`;
+  setTimeout(()=>{ mount.innerHTML=''; },1800);
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+function init(){
+  load();
+  bindNav();
+  setRoute('dashboard');
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+<script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v31edd6df95cf4e85bb4c19e7a9bdbcba1788362987495" integrity="sha512-iIg7k2xntmwu6/uSb5tpc/hySgZc4eoL31yB29W6tJFo2akwjPWcEqnCEdJvGexCL0KEQwVYv5BlowfhVz26hg==" data-cf-beacon='{"version":"2024.11.0","token":"8607d2a720d14b038279025b2b5a82e5","spa":2}' crossorigin="anonymous"></script>
+</body>
+</html>
