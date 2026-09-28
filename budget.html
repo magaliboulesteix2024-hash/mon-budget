@@ -236,8 +236,8 @@ function totalAlimValides(m){ return m.alimDepenses.reduce((s,d)=>s+d.montant,0)
 function resteAVivre(m){
   return totalRessources(m) - totalChargesValidees(m) - totalEpargneValidee(m) - totalLoisirsValides(m) - totalAlimValides(m);
 }
-function suggestionEpargne(m){ return m.salaire*0.20; }
-function suggestionLoisirs(m){ return m.salaire*0.30; }
+function suggestionEpargne(m){ return m.salaire*0.30; }
+function suggestionLoisirs(m){ return m.salaire*0.20; }
 function suggestionCharges(m){ return m.salaire*0.50; }
 function suggestionAlim(m){
   return Math.max(0, suggestionCharges(m) - totalChargesValidees(m));
@@ -264,7 +264,7 @@ function render(){
   else if(state.page==='ressources') c.innerHTML = renderRessources();
   else if(state.page==='charges') c.innerHTML = renderCharges();
   else if(state.page==='epargne') c.innerHTML = renderEpargne();
-  else if(state.page==='loisirs') c.innerHTML = renderVariable(m=>m.loisirsCategories, m=>m.loisirsDepenses, 'loisirs', suggestionLoisirs, totalLoisirsValides, 'Budget loisirs (30% du salaire)');
+  else if(state.page==='loisirs') c.innerHTML = renderVariable(m=>m.loisirsCategories, m=>m.loisirsDepenses, 'loisirs', suggestionLoisirs, totalLoisirsValides, 'Budget loisirs (20% du salaire)');
   else if(state.page==='alim') c.innerHTML = renderVariable(m=>m.alimCategories, m=>m.alimDepenses, 'alim', suggestionAlim, totalAlimValides, 'Budget Alimentation & Voiture');
 
   if(state.page==='dashboard') drawChart();
@@ -638,7 +638,7 @@ function renderEpargne(){
 
   return `
     <div class="card">
-      <h3>Suggestion 20% (épargne)</h3>
+      <h3>Suggestion 30% (épargne)</h3>
       <div class="big-number">${epSug.toFixed(2)} €</div>
       <div class="row-sub">Validé ce mois : ${epVal.toFixed(2)} €</div>
     </div>
